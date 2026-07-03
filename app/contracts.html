@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Contracts · Clockchain App</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@100;200;300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="app.css?v=1" />
+</head>
+<body data-nav="contracts">
+  <div class="shell">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="main">
+      <header class="topbar" id="topbar" data-title="Smart Contracts"></header>
+      <div class="content">
+
+        <div class="page-head">
+          <h1>Smart Contract Scheduling</h1>
+          <p>Time triggers with cryptographic proof of execution, on Ethereum and Polygon. Non-custodial: your wallet signs, the server holds no key.</p>
+        </div>
+
+        <div class="cards c4">
+          <div class="card"><div class="stat-k">Total contracts</div><div class="stat-v">7</div></div>
+          <div class="card"><div class="stat-k">Scheduled</div><div class="stat-v">3</div></div>
+          <div class="card"><div class="stat-k">Deployments</div><div class="stat-v">12</div></div>
+          <div class="card"><div class="stat-k">Failed</div><div class="stat-v">0</div></div>
+        </div>
+
+        <div class="section cards c2">
+          <div class="card">
+            <div class="card-head"><h3>Schedule contract</h3></div>
+            <div class="field">
+              <label>Contract address</label>
+              <input type="text" placeholder="0x…" class="mono" />
+            </div>
+            <div class="field">
+              <label>Chain</label>
+              <select><option>Ethereum</option><option>Polygon</option></select>
+            </div>
+            <div class="field">
+              <label>Trigger · Clockchain time (UTC)</label>
+              <input type="text" placeholder="2026-07-04T00:00:00Z" class="mono" />
+            </div>
+            <button class="btn btn-primary" onclick="ccMock('Mockup: contract scheduled')">Schedule</button>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h3>How triggers verify</h3></div>
+            <p style="font-size:13.5px;color:var(--fg-2);">Execution fires on the network's consented block time, not a server clock. The receipt carries the trigger block and consensus timestamp, so anyone can re-check that the contract ran when it was meant to.</p>
+            <div class="docs-note">Webhook notifications fire on schedule, execution, and failure. <b>Never miss a deadline again.</b></div>
+            <a class="more" href="docs/index.html" style="font-size:12.5px;">Scheduling docs →</a>
+          </div>
+        </div>
+
+        <div class="section card">
+          <div class="card-head"><h3>Recent contract activity</h3></div>
+          <table class="table">
+            <thead><tr><th>Contract</th><th>Chain</th><th>Trigger</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">escrow-release · 0x8d4f…22b1</td><td>Ethereum</td><td class="mono">2026-07-04T00:00:00Z</td><td><span class="status-pill">Scheduled</span></td></tr>
+              <tr><td class="mono">payroll-jul · 0x1a9c…77e4</td><td>Polygon</td><td class="mono">2026-07-25T09:00:00Z</td><td><span class="status-pill">Scheduled</span></td></tr>
+              <tr><td class="mono">option-expiry · 0x3fb8…c052</td><td>Ethereum</td><td class="mono">2026-06-30T16:00:00Z</td><td><span class="status-pill">Executed</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  <script src="app.js?v=1"></script>
+</body>
+</html>

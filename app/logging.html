@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Logging · Clockchain App</title>
+  <link rel="icon" type="image/png" sizes="32x32" href="../assets/favicon-32.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@100;200;300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="app.css?v=1" />
+</head>
+<body data-nav="logging">
+  <div class="shell">
+    <aside class="sidebar" id="sidebar"></aside>
+    <div class="main">
+      <header class="topbar" id="topbar" data-title="Logging"></header>
+      <div class="content">
+
+        <div class="page-head">
+          <h1>Logging</h1>
+          <p>Hash any asset with industry-standard hashing, anchor it on-chain, and authenticate it from any device.</p>
+        </div>
+
+        <div class="cards c4">
+          <div class="card"><div class="stat-k">Logs remaining</div><div class="stat-v">1,000</div></div>
+          <div class="card"><div class="stat-k">Consumed · 30d</div><div class="stat-v">214</div></div>
+          <div class="card"><div class="stat-k">Purchased total</div><div class="stat-v">1,500</div></div>
+          <div class="card"><div class="stat-k">Block height</div><div class="stat-v" data-live="height">#—</div></div>
+        </div>
+
+        <div class="section cards c2">
+          <div class="card">
+            <div class="card-head"><h3>Create log</h3></div>
+            <div class="field">
+              <label>Payload or asset</label>
+              <textarea rows="3" placeholder="Paste text, or a file hash (SHA-256)"></textarea>
+            </div>
+            <div class="field">
+              <label>Label</label>
+              <input type="text" placeholder="e.g. Q3 board resolution, final" />
+            </div>
+            <button class="btn btn-primary" onclick="ccMock('Mockup: log anchored to next block')">Log to chain</button>
+            <p style="font-size:12px;color:var(--fg-3);margin-top:12px;">You get back a verifiable, second-anchored timestamp and receipt.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h3>Search &amp; verify</h3></div>
+            <div class="field">
+              <label>Hash, label, or block</label>
+              <input type="text" placeholder="0x…, label, or #block" />
+            </div>
+            <button class="btn btn-outline" onclick="ccMock('Mockup: search simulated')">Search history</button>
+            <div class="docs-note" style="margin-top:18px;">Every receipt is self-verifying: recompute the hash, compare to the on-chain block. <b>Proof, not a screenshot.</b></div>
+          </div>
+        </div>
+
+        <div class="section card">
+          <div class="card-head"><h3>Recent logging activity</h3></div>
+          <table class="table">
+            <thead><tr><th>Hash</th><th>Label</th><th>Block</th><th>Anchored</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td class="mono">0x9f3c…a71e</td><td>Q3 board resolution, final</td><td class="mono">#36,041,882</td><td>2026-07-03 02:12 UTC</td><td><span class="status-pill">Verified</span></td></tr>
+              <tr><td class="mono">0x4b21…09dd</td><td>supplier-manifest.pdf</td><td class="mono">#36,038,554</td><td>2026-07-03 01:03 UTC</td><td><span class="status-pill">Verified</span></td></tr>
+              <tr><td class="mono">0xe7a0…3c48</td><td>deploy-artifact 4.2.1</td><td class="mono">#35,991,207</td><td>2026-07-02 12:14 UTC</td><td><span class="status-pill">Verified</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+      </div>
+    </div>
+  </div>
+  <script src="app.js?v=1"></script>
+</body>
+</html>
