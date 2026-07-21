@@ -15,18 +15,27 @@
   /* ---- camera / layout ---- */
   var CAM_D = 1.7;         /* camera distance from sphere centre (R = 1) */
   var SPIN = 0.045;        /* radians per second */
-  var TILT = -0.38;        /* lean the pole toward the viewer */
+  /* Near-upright. A steeper tilt swings whole latitude bands behind the horizon:
+     at -0.38 every city north of ~33 deg could never be drawn at all. Measured
+     across a full rotation, 0.05 is the only setting where all 13 cities surface. */
+  var TILT = 0.05;
   var landSegs = null;
 
   /* cities: [name, lat, lon, UTC offset hours (July 2026, incl. summer time)] */
   var CITIES = [
     ['Neuchatel', 46.99, 6.93, 2],
     ['London', 51.51, -0.13, 1],
+    ['Frankfurt', 50.11, 8.68, 2],
     ['New York', 40.71, -74.01, -4],
+    ['Chicago', 41.88, -87.63, -5],
     ['San Francisco', 37.77, -122.42, -7],
+    ['São Paulo', -23.55, -46.63, -3],
     ['Dubai', 25.20, 55.27, 4],
+    ['Mumbai', 19.08, 72.88, 5.5],
     ['Singapore', 1.35, 103.82, 8],
-    ['Tokyo', 35.68, 139.69, 9]
+    ['Hong Kong', 22.32, 114.17, 8],
+    ['Tokyo', 35.68, 139.69, 9],
+    ['Sydney', -33.87, 151.21, 10]
   ];
 
   var W = 0, H = 0, DPR = 1, S = 0, CX = 0, CY = 0;
@@ -40,11 +49,16 @@
     var narrow = W < 760;
     S = Math.max(W, H) * (narrow ? 0.46 : 0.4);
     CX = narrow ? W * 0.5 : W * 0.66;
-    CY = narrow ? H * 0.34 : H * 0.5;
+    /* sits low enough that the northern band clears the live clock card, which
+       otherwise swallowed 68-83% of every city label's path */
+    CY = narrow ? H * 0.34 : H * 0.62;
   }
 
   function accent(){
     return getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#00cc00';
+  }
+  function pageBg(){
+    return getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#ffffff';
   }
 
   function toXYZ(lat, lon){
@@ -92,25 +106,42 @@
     var d = new Date(Date.now() + offset * 3600000);
     return pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes());
   }
-  function drawCities(rot, ac){
-    var a = [0,0,0,0];
-    ctx.font = '500 10.5px "JetBrains Mono", monospace';
+  function drawCities(rot, ac, bg){
+    var a = [0,0,0,0], boxes = [], fadeR = S / CAM_D * 1.33;
+    ctx.font = '500 11.5px "JetBrains Mono", monospace';
     ctx.textBaseline = 'middle';
     for(var i = 0; i < CITIES.length; i++){
       var c = CITIES[i];
       project(toXYZ(c[1], c[2]), rot, a);
       if(!a[2]) continue;
-      var front = a[3];
-      if(front < 0.12) continue;
-      var x = a[0], y = a[1];
-      ctx.globalAlpha = 0.26 + front * 0.48;
+      var x = a[0], y = a[1], dx = x - CX, dy = y - CY;
+      /* keep tags on the globe: past the vignette they float on blank page */
+      if(Math.sqrt(dx * dx + dy * dy) > fadeR) continue;
+      /* 0 at the limb, 1 dead centre. z never drops below 1/CAM_D when visible,
+         so normalise across that range instead of wasting most of the ramp. */
+      var lift = (a[3] - 1 / CAM_D) / (1 - 1 / CAM_D);
+      var label = c[0] + '  ' + cityTime(c[3]);
+      var bx = x + 7, w = ctx.measureText(label).width;
+      var box = [bx, y - 9, bx + w, y + 9], clash = false;
+      for(var j = 0; j < boxes.length; j++){
+        var b = boxes[j];
+        if(box[0] < b[2] && box[2] > b[0] && box[1] < b[3] && box[3] > b[1]){ clash = true; break; }
+      }
+      if(clash) continue;          /* never stack two tags on top of each other */
+      boxes.push(box);
+      ctx.globalAlpha = 0.55 + lift * 0.4;
       ctx.fillStyle = ac;
-      ctx.beginPath(); ctx.arc(x, y, 1.7, 0, 6.2832); ctx.fill();
-      ctx.globalAlpha = 0.14 + front * 0.32;
+      ctx.beginPath(); ctx.arc(x, y, 2.1, 0, 6.2832); ctx.fill();
+      /* halo in the page colour so the tag reads over the graticule lines */
+      ctx.globalAlpha = 0.9;
+      ctx.strokeStyle = bg; ctx.lineWidth = 3.5; ctx.lineJoin = 'round';
+      ctx.strokeText(label, bx, y);
+      ctx.globalAlpha = 0.6 + lift * 0.35;
       ctx.fillStyle = ac;
-      ctx.fillText(c[0] + '  ' + cityTime(c[3]), x + 6, y);
+      ctx.fillText(label, bx, y);
     }
     ctx.globalAlpha = 1;
+    ctx.lineWidth = 1;
   }
 
   /* ---- graticule ---- */
@@ -168,7 +199,7 @@
     strokeSegs(grat, rot, 0.15);
     if(landSegs) strokeSegs(landSegs, rot, 0.4);
     fade();
-    drawCities(rot, ac);
+    drawCities(rot, ac, pageBg());
   }
 
   /* ---- loop: fixed backdrop, runs while the tab is visible ----
