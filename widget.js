@@ -46,12 +46,19 @@
     date: document.getElementById('cw-date'),
     height: document.getElementById('cw-height'),
     hash: document.getElementById('cw-hash'),
+    logs: document.getElementById('cw-logs'),
     dHash: document.getElementById('cwd-hash'),
     dTime: document.getElementById('cwd-time'),
     dHeight: document.getElementById('cwd-height')
   };
   var srcEls = document.querySelectorAll('[data-cw-src]');
   var offEls = document.querySelectorAll('[data-cw-off]');
+
+  /* total logs anchored: a large, continuously rising number.
+     Simulated: ~7.4 logs/second from a fixed epoch so it only ever climbs. */
+  var LOGS_EPOCH = Date.UTC(2026, 0, 1, 0, 0, 0);
+  var LOGS_RATE = 7.4;
+  function totalLogs(ms){ return Math.floor((ms - LOGS_EPOCH) / 1000 * LOGS_RATE); }
 
   var lastSecond = -1;
   function render(){
@@ -60,6 +67,7 @@
     var msPart = pad(st.ms % 1000, 3);
 
     if(el.time) el.time.innerHTML = fmtTime(st.ms) + '<span class="cw-ms">.' + msPart + '</span>';
+    if(el.logs) el.logs.textContent = totalLogs(st.ms).toLocaleString();
 
     if(sec !== lastSecond){
       lastSecond = sec;

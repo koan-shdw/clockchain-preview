@@ -1,7 +1,10 @@
-/* Hero background: close-up wireframe Earth, slow spin, faint accent lines
-   fading at the edges. Canvas 2D, no dependencies. Land outlines from the
-   same world-atlas TopoJSON Jim's globe uses; falls back to graticule only
-   if the fetch fails. */
+/* Fixed background globe: a wireframe Earth pinned to the viewport (does not
+   scroll), spinning slowly, faint accent lines fading around the globe, with
+   subtle city + local-time tags (Neuchatel plus main world cities). It sits
+   behind the whole page and is dimmed behind the content sections by their
+   translucent backgrounds. Canvas 2D, no dependencies. Land outlines from the
+   world-atlas TopoJSON; graticule-only fallback if it fails.
+   Reduced ~50% from the earlier size, per the team notes. */
 (function(){
   var canvas = document.getElementById('hero-earth');
   if(!canvas) return;
@@ -10,10 +13,21 @@
   var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   /* ---- camera / layout ---- */
-  var CAM_D = 1.45;        /* camera distance from sphere centre (R = 1): close = strong perspective */
-  var SPIN = 0.05;         /* radians per second */
-  var TILT = -0.42;        /* lean the pole toward the viewer */
+  var CAM_D = 1.7;         /* camera distance from sphere centre (R = 1) */
+  var SPIN = 0.045;        /* radians per second */
+  var TILT = -0.38;        /* lean the pole toward the viewer */
   var landSegs = null;
+
+  /* cities: [name, lat, lon, UTC offset hours (July 2026, incl. summer time)] */
+  var CITIES = [
+    ['Neuchatel', 46.99, 6.93, 2],
+    ['London', 51.51, -0.13, 1],
+    ['New York', 40.71, -74.01, -4],
+    ['San Francisco', 37.77, -122.42, -7],
+    ['Dubai', 25.20, 55.27, 4],
+    ['Singapore', 1.35, 103.82, 8],
+    ['Tokyo', 35.68, 139.69, 9]
+  ];
 
   var W = 0, H = 0, DPR = 1, S = 0, CX = 0, CY = 0;
   function resize(){
@@ -21,24 +35,24 @@
     W = window.innerWidth; H = window.innerHeight;
     canvas.width = W * DPR; canvas.height = H * DPR;
     canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
-    /* sphere fills most of the hero, centre pushed low-right so the
-       upper-left curve sweeps across the section */
-    S = Math.max(W, H) * 0.72;
-    CX = W * 0.6;
-    CY = H * 0.55;
+    /* ~50% smaller than the old full-bleed globe, sitting centre-right so it
+       reads strongest behind the hero widget */
+    var narrow = W < 760;
+    S = Math.max(W, H) * (narrow ? 0.46 : 0.4);
+    CX = narrow ? W * 0.5 : W * 0.66;
+    CY = narrow ? H * 0.34 : H * 0.5;
   }
 
   function accent(){
     return getComputedStyle(document.documentElement).getPropertyValue('--accent').trim() || '#00cc00';
   }
 
-  /* lat/lon (deg) -> unit sphere */
   function toXYZ(lat, lon){
     var la = lat * Math.PI / 180, lo = lon * Math.PI / 180;
     return [Math.cos(la) * Math.sin(lo), Math.sin(la), Math.cos(la) * Math.cos(lo)];
   }
 
-  /* rotate around Y (spin), then X (tilt); camera looks down +Z */
+  /* rotate around Y (spin) then X (tilt); out = [x, y, visible, frontness] */
   function project(p, rot, out){
     var cr = Math.cos(rot), sr = Math.sin(rot);
     var x = p[0] * cr + p[2] * sr;
@@ -46,19 +60,19 @@
     var ct = Math.cos(TILT), st = Math.sin(TILT);
     var y = p[1] * ct - z * st;
     z = p[1] * st + z * ct;
-    /* visible-hemisphere test for a perspective camera at distance d */
     if(z < 1 / CAM_D) { out[2] = 0; return out; }
     var k = S / (CAM_D - z);
     out[0] = CX + x * k;
     out[1] = CY - y * k;
     out[2] = 1;
+    out[3] = z;
     return out;
   }
 
   function strokeSegs(segs, rot, alpha){
     ctx.globalAlpha = alpha;
     ctx.beginPath();
-    var a = [0,0,0];
+    var a = [0,0,0,0];
     for(var i = 0; i < segs.length; i++){
       var seg = segs[i], pen = false;
       for(var j = 0; j < seg.length; j++){
@@ -72,23 +86,50 @@
     ctx.stroke();
   }
 
+  /* ---- city tags ---- */
+  function pad(n){ return (n < 10 ? '0' : '') + n; }
+  function cityTime(offset){
+    var d = new Date(Date.now() + offset * 3600000);
+    return pad(d.getUTCHours()) + ':' + pad(d.getUTCMinutes());
+  }
+  function drawCities(rot, ac){
+    var a = [0,0,0,0];
+    ctx.font = '500 10.5px "JetBrains Mono", monospace';
+    ctx.textBaseline = 'middle';
+    for(var i = 0; i < CITIES.length; i++){
+      var c = CITIES[i];
+      project(toXYZ(c[1], c[2]), rot, a);
+      if(!a[2]) continue;
+      var front = a[3];
+      if(front < 0.12) continue;
+      var x = a[0], y = a[1];
+      ctx.globalAlpha = 0.26 + front * 0.48;
+      ctx.fillStyle = ac;
+      ctx.beginPath(); ctx.arc(x, y, 1.7, 0, 6.2832); ctx.fill();
+      ctx.globalAlpha = 0.14 + front * 0.32;
+      ctx.fillStyle = ac;
+      ctx.fillText(c[0] + '  ' + cityTime(c[3]), x + 6, y);
+    }
+    ctx.globalAlpha = 1;
+  }
+
   /* ---- graticule ---- */
   var grat = [];
   (function(){
     var lat, lon, line;
-    for(lon = -180; lon < 180; lon += 10){
+    for(lon = -180; lon < 180; lon += 15){
       line = [];
-      for(lat = -90; lat <= 90; lat += 2) line.push(toXYZ(lat, lon));
+      for(lat = -90; lat <= 90; lat += 3) line.push(toXYZ(lat, lon));
       grat.push(line);
     }
-    for(lat = -80; lat <= 80; lat += 10){
+    for(lat = -75; lat <= 75; lat += 15){
       line = [];
-      for(lon = -180; lon <= 180; lon += 2) line.push(toXYZ(lat, lon));
+      for(lon = -180; lon <= 180; lon += 3) line.push(toXYZ(lat, lon));
       grat.push(line);
     }
   })();
 
-  /* ---- land outlines: decode world-atlas TopoJSON arcs ---- */
+  /* ---- land outlines ---- */
   fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/land-110m.json')
     .then(function(r){ return r.json(); })
     .then(function(topo){
@@ -101,15 +142,16 @@
         });
       });
     })
-    .catch(function(){ /* graticule-only fallback */ });
+    .catch(function(){});
 
-  /* ---- edge fade ---- */
+  /* ---- edge fade, centred on the globe ---- */
   function fade(){
     ctx.globalAlpha = 1;
     ctx.globalCompositeOperation = 'destination-in';
-    var g = ctx.createRadialGradient(W * 0.55, H * 0.5, 0, W * 0.55, H * 0.5, Math.max(W, H) * 0.78);
+    var r = S / CAM_D * 1.35;
+    var g = ctx.createRadialGradient(CX, CY, r * 0.35, CX, CY, r);
     g.addColorStop(0, 'rgba(0,0,0,1)');
-    g.addColorStop(0.7, 'rgba(0,0,0,0.92)');
+    g.addColorStop(0.72, 'rgba(0,0,0,0.9)');
     g.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = g;
     ctx.fillRect(0, 0, W, H);
@@ -121,13 +163,17 @@
     ctx.clearRect(0, 0, W, H);
     ctx.lineWidth = 1;
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = accent();
-    strokeSegs(grat, rot, 0.18);
-    if(landSegs) strokeSegs(landSegs, rot, 0.42);
+    var ac = accent();
+    ctx.strokeStyle = ac;
+    strokeSegs(grat, rot, 0.15);
+    if(landSegs) strokeSegs(landSegs, rot, 0.4);
     fade();
+    drawCities(rot, ac);
   }
 
-  /* ---- loop: fixed viewport backdrop, pause only when the tab is hidden ---- */
+  /* ---- loop: fixed backdrop, runs while the tab is visible ----
+     The canvas is a GPU-promoted fixed layer (see CSS translateZ), so it does
+     not repaint on scroll and cannot flicker as the sections scroll over it. */
   var running = false, raf = null, t0 = null, rot0 = 0.6;
   function frame(t){
     if(t0 === null) t0 = t;
@@ -143,11 +189,15 @@
   }
 
   document.addEventListener('visibilitychange', function(){ setRunning(true); });
-  window.addEventListener('resize', function(){ resize(); if(!running) draw(rot0); });
+  var rt = null;
+  window.addEventListener('resize', function(){
+    /* debounce so a scroll-driven mobile URL-bar resize does not thrash */
+    if(rt) return;
+    rt = setTimeout(function(){ rt = null; resize(); if(!running) draw(rot0); }, 150);
+  });
 
   resize();
-  if(reduceMotion){ draw(rot0); setTimeout(function(){ draw(rot0); }, 1500); /* redraw once land arrives */ }
+  if(reduceMotion){ draw(rot0); setTimeout(function(){ draw(rot0); }, 1500); }
   else setRunning(true);
-  /* first land paint if animation is off-screen at load */
   setTimeout(function(){ if(!running) draw(rot0); }, 1500);
 })();
